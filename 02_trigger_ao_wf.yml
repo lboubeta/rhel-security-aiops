@@ -31,6 +31,7 @@
           Content-Type: application/json
         body: "{{ event_payload }}"
         status_code: 202
+        validate_certs: false
       register: webhook_response
 
     - name: Display execution ID
