@@ -1,0 +1,57 @@
+---
+
+# example_rulebook.yaml
+- name: Red Hat Insights (Lightspeed)
+  hosts: localhost
+  sources:
+    # console.redhat.com -> Settings -> Integrations -> Reporting & automation -> Event-Driven Ansible
+    - redhatinsights.eda.insights:
+        host: 0.0.0.0
+        port: 10000
+        # token:    # secret token.
+        # certfile: # (optional) path to a certificate file to enable TLS support
+        # keyfile:  # (optional) path to a key file to be used together with certfile
+        # password: # (optional) path to a key file to be used together with certfile
+  rules:
+    # - name: Match any new known exploit vulnerability events
+    #   condition: |-
+    #     event.payload.application == "vulnerability"
+    #     and event.payload.event_type in [
+    #       "any-cve-known-exploit"
+    #     ]
+    #   actions:
+    #     - print_event:
+    #         pretty: true
+    #     - run_workflow_template:
+    #         organization: "Default"
+    #         name: "AWS AIOps: MITIGATION & REMEDIATION Workflow"
+    #         labels:
+    #           - EDA Lightspeed Vulnerability All
+
+    - name: Match all System known exploit vulnerability events
+      condition: |-
+        event.payload.application == "vulnerability"
+        and event.payload.event_type in [
+          "system-cve-known-exploit"
+        ]
+      actions:
+        - print_event:
+            pretty: true
+        - run_job_template:
+            organization: "Default"
+            name: "AWS AIOps: Check CVE Systems"
+            labels:
+              - EDA Lightspeed Vulnerability System
+
+    - name: Trigger AO Workflow
+      condition: |-
+        event.payload.application == "vulnerability"
+        and event.payload.event_type in [
+          "any-cve-known-exploit"
+        ]
+      actions:
+        - print_event:
+            pretty: true
+        - run_job_template:
+            organization: "Webinar"
+            name: "Run AO Workflow"
