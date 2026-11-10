@@ -18,6 +18,7 @@
           client_id: "{{ webhook_client_id }}"
           client_secret: "{{ webhook_client_secret }}"
         status_code: 200
+        validate_certs: false
       register: token_response
 
     - name: Post event payload to Event-Driven Ansible trigger endpoint
