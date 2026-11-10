@@ -1,8 +1,8 @@
 ---
 
-- import_playbook: aws_aiops_unsetup.yml
+- import_playbook: 42_unsetup.yml
 
-- import_playbook: aws_aiops_unsetup_rhelnew.yml
+- import_playbook: 44_unsetup_rhelnew.yml
 
 - name: AWS AIOps Undeploy
   hosts: localhost

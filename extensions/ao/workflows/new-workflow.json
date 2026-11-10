@@ -1,0 +1,160 @@
+{
+  "schema_version": "2.0.0",
+  "name": "new-workflow",
+  "description": "Forward EDA Lightspeed vulnerability events to the AAP mitigation & remediation workflow",
+  "triggers": [
+    {
+      "id": "activity_39d419bc_d4c6_4aa0_9d76_a108731cf00b",
+      "type": "eda_trigger",
+      "name": "Trigger",
+      "parameters": {
+        "input_schema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Lightspeed vulnerability event (00_cve_event_mitigation.yml)",
+          "type": "object",
+          "required": [
+            "bundle",
+            "application",
+            "event_type",
+            "events"
+          ],
+          "properties": {
+            "bundle": {
+              "type": "string",
+              "description": "Insights bundle (for example, rhel)"
+            },
+            "application": {
+              "type": "string",
+              "description": "Insights application (for example, vulnerability)"
+            },
+            "version": {
+              "type": "string"
+            },
+            "event_type": {
+              "type": "string",
+              "description": "Event type (for example, any-cve-known-exploit)"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "org_id": {
+              "type": "string"
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "display_name": {
+                  "type": "string"
+                },
+                "inventory_id": {
+                  "type": "string"
+                },
+                "org_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "payload": {
+                    "type": "object",
+                    "properties": {
+                      "reported_cve": {
+                        "type": "string"
+                      },
+                      "cvss_score": {
+                        "type": "number"
+                      },
+                      "impact_id": {
+                        "type": "integer"
+                      },
+                      "known_exploit": {
+                        "type": "boolean"
+                      },
+                      "has_rule": {
+                        "type": "boolean"
+                      },
+                      "publish_date": {
+                        "type": "string"
+                      },
+                      "demo_has_remediation": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "recipients": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "source": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "severity": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "webhook_path": "a8b264b8-08be-469e-9c0c-788beb600126",
+        "authorized_service_account_ids": [
+          "e51204b3-9fd6-4305-b311-bc3aa350ddea"
+        ]
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "activity_e4da0c1b_c5d9_4232_9bef_0ad7aa7e950b",
+      "type": "aap_workflow_job_template",
+      "name": "Launch AAP workflow job template",
+      "parameters": {
+        "labels": [
+          "EDA Lightspeed Vulnerability All"
+        ],
+        "credential_id": "b346211f-f147-4c1a-b6d8-d8627371c5e3",
+        "integration_id": "ff84a7c5-eadd-491d-9dde-3dc4745e8e35",
+        "organization_name": "Default",
+        "workflow_job_template_id": 36,
+        "workflow_job_template_name": "AWS AIOps: MITIGATION & REMEDIATION Workflow",
+        "extra_vars": {
+          "ansible_eda": {
+            "event": {
+              "payload": "${trigger}"
+            }
+          }
+        }
+      },
+      "position": {
+        "x": 386.5,
+        "y": -61.109375
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "activity_39d419bc_d4c6_4aa0_9d76_a108731cf00b",
+      "to": "activity_e4da0c1b_c5d9_4232_9bef_0ad7aa7e950b"
+    }
+  ]
+}

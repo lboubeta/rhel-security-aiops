@@ -20,5 +20,5 @@
 
     # using an item tasks playbook prevents loop to abort when any item fails
     - name: Loop over CVEs and Launch Job Workflow Template
-      ansible.builtin.include_tasks: aws_aiops_check_cve_systems_item.yml
+      ansible.builtin.include_tasks: 11_check_cve_systems_item.yml
       loop: "{{ payload.events }}"

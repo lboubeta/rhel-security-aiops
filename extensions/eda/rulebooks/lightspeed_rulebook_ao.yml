@@ -38,8 +38,8 @@
         - print_event:
             pretty: true
         - run_job_template:
-            organization: "Default"
-            name: "AWS AIOps: Check CVE Systems"
+            organization: "Webinar"
+            name: "10. Check CVE Systems"
             labels:
               - EDA Lightspeed Vulnerability System
 
@@ -54,4 +54,4 @@
             pretty: true
         - run_job_template:
             organization: "Webinar"
-            name: "Run AO Workflow"
+            name: "02. Trigger AO Workflow"
