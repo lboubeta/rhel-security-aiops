@@ -4,10 +4,11 @@
   connection: local
   gather_facts: false
 
-  vars:
-    event_payload: {}
-
   tasks:
+    - name: Debug Event Payload
+      ansible.builtin.debug:
+        var: ansible_eda.event.payload
+
     - name: Obtain OAuth token
       ansible.builtin.uri:
         url: "{{ webhook_base_url }}/api/v1/auth/token"
@@ -29,7 +30,7 @@
         headers:
           Authorization: "Bearer {{ token_response.json.access_token }}"
           Content-Type: application/json
-        body: "{{ event_payload }}"
+        body: "{{ ansible_eda.event.payload }}"
         status_code: 202
         validate_certs: false
       register: webhook_response
