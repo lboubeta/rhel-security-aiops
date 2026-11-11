@@ -9,7 +9,7 @@
     - name: AIOps Lightspeed action payload
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
-        cve_name: "{{ cve_name | default(ansible_eda.event.payload.events[0].payload.reported_cve) }}"
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.event.payload.reported_cve) }}"
 
     - name: Get Lightspeed access token using Service Account Client ID and Secret
       ansible.builtin.uri:
@@ -38,6 +38,6 @@
         # real check
           # - (cve_response.json.data.attributes.rules | length > 0) or (cve_response.json.data.attributes.advisories_list | default([]) | length > 0)
         # demo check
-          - payload.events[0].payload.demo_has_remediation == true
+          - payload.event.payload.demo_has_remediation == true
         fail_msg: "There ARE NO Remediations available on Lightspeed. Going to use AI-based Mitigation"
         success_msg: "There ARE Remediations available on Lightspeed. Security Rules {{ cve_response.json.data.attributes.rules }}, Advisories: {{ cve_response.json.data.attributes.advisories_list }}. Going for Remediations."

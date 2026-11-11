@@ -9,7 +9,7 @@
     - name: Resolve CVE context
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
-        cve_name: "{{ cve_name | default(ansible_eda.event.payload.events[0].payload.reported_cve) }}"
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.event.payload.reported_cve) }}"
         affected_systems_id: "{{ affected_systems_id | default([]) }}"
 
     - name: Get access token using Service Account Client ID and Secret

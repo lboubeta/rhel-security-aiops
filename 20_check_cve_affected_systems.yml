@@ -9,7 +9,7 @@
     - name: AIOps Lightspeed action payload
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
-        cve_name: "{{ ansible_eda.event.payload.events[0].payload.reported_cve }}"
+        cve_name: "{{ ansible_eda.event.payload.event.payload.reported_cve }}"
 
     - name: Publish CVE name artifact
       ansible.builtin.set_stats:

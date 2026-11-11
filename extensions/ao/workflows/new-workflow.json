@@ -10,58 +10,56 @@
       "parameters": {
         "input_schema": {
           "type": "object",
-          "title": "Lightspeed vulnerability event (00_cve_event_mitigation.yml)",
+          "title": "Lightspeed vulnerability event (flattened for AO)",
           "$schema": "http://json-schema.org/draft-07/schema#",
           "required": [
             "bundle",
             "application",
             "event_type",
-            "events"
+            "event"
           ],
           "properties": {
             "bundle": {
               "type": "string",
               "description": "Insights bundle (for example, rhel)"
             },
-            "events": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "payload": {
-                    "type": "object",
-                    "properties": {
-                      "has_rule": {
-                        "type": "boolean"
-                      },
-                      "impact_id": {
-                        "type": "integer"
-                      },
-                      "cvss_score": {
-                        "type": "number"
-                      },
-                      "publish_date": {
-                        "type": "string"
-                      },
-                      "reported_cve": {
-                        "type": "string"
-                      },
-                      "known_exploit": {
-                        "type": "boolean"
-                      },
-                      "demo_has_remediation": {
-                        "type": "boolean"
-                      }
+            "event": {
+              "type": "object",
+              "description": "Single CVE event (events[0] flattened by 02_trigger_ao_wf.yml)",
+              "properties": {
+                "payload": {
+                  "type": "object",
+                  "properties": {
+                    "has_rule": {
+                      "type": "boolean"
                     },
-                    "additionalProperties": true
+                    "impact_id": {
+                      "type": "integer"
+                    },
+                    "cvss_score": {
+                      "type": "number"
+                    },
+                    "publish_date": {
+                      "type": "string"
+                    },
+                    "reported_cve": {
+                      "type": "string"
+                    },
+                    "known_exploit": {
+                      "type": "boolean"
+                    },
+                    "demo_has_remediation": {
+                      "type": "boolean"
+                    }
                   },
-                  "metadata": {
-                    "type": "object",
-                    "additionalProperties": true
-                  }
+                  "additionalProperties": true
                 },
-                "additionalProperties": true
-              }
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
             },
             "org_id": {
               "type": "string"
@@ -184,12 +182,12 @@
           {
             "port": "case_0",
             "label": "Mitigation",
-            "condition": "${trigger.events[0].payload.demo_has_remediation} == false"
+            "condition": "${trigger.event.payload.demo_has_remediation} == false"
           },
           {
             "port": "case_1",
             "label": "Remediation",
-            "condition": "${trigger.events[0].payload.demo_has_remediation} == true"
+            "condition": "${trigger.event.payload.demo_has_remediation} == true"
           }
         ],
         "default_port": "default"
