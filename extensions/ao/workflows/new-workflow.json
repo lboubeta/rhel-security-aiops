@@ -134,11 +134,7 @@
         "job_template_name": "20. Check CVE Affected Systems",
         "organization_name": "Webinar",
         "extra_vars": {
-          "ansible_eda": {
-            "event": {
-              "payload": "${trigger}"
-            }
-          }
+          "ansible_eda": "${trigger}"
         }
       },
       "position": {
@@ -158,11 +154,7 @@
         "job_template_name": "21. Check CVE Remediations",
         "organization_name": "Webinar",
         "extra_vars": {
-          "ansible_eda": {
-            "event": {
-              "payload": "${trigger}"
-            }
-          },
+          "ansible_eda": "${trigger}",
           "cve_name": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.cve_name}",
           "affected_systems_id": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.affected_systems_id}",
           "affected_systems_fqdn": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.affected_systems_fqdn}"
@@ -209,11 +201,7 @@
         "job_template_name": "22. Get CVE AI Mitigation",
         "organization_name": "Webinar",
         "extra_vars": {
-          "ansible_eda": {
-            "event": {
-              "payload": "${trigger}"
-            }
-          },
+          "ansible_eda": "${trigger}",
           "cve_name": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.cve_name}",
           "affected_systems_id": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.affected_systems_id}",
           "affected_systems_fqdn": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.affected_systems_fqdn}"
@@ -236,11 +224,7 @@
         "job_template_name": "24. Get CVE Remediation",
         "organization_name": "Webinar",
         "extra_vars": {
-          "ansible_eda": {
-            "event": {
-              "payload": "${trigger}"
-            }
-          },
+          "ansible_eda": "${trigger}",
           "cve_name": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.cve_name}",
           "affected_systems_id": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.affected_systems_id}",
           "affected_systems_fqdn": "${activity_c6d2855e_6086_45cc_9315_91db417fca59.artifacts.affected_systems_fqdn}"
