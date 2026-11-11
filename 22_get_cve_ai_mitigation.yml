@@ -3,33 +3,18 @@
 - name: Get AI generated Mitigation Code
   hosts: localhost
   connection: local
-  gather_facts: no
+  gather_facts: false
   vars_files: vars/main.yml
   vars:
     cve_details: ""
   tasks:
-    # - name: Fetch CVE data from Red Hat Security Data API
-    #   ansible.builtin.uri:
-    #     url: "https://access.redhat.com/hydra/rest/securitydata/cve/{{ cve_name }}.json"
-    #     method: GET
-    #     return_content: true
-    #     status_code: 200
-    #   register: cve_response
-
-    # - name: Display CVE details
-    #   ansible.builtin.debug:
-    #     var: cve_response.json
-
-    # - name: Set the CVE Details
-    #   ansible.builtin.set_fact:
-    #     cve_details: "{{ cve_response.json.details | default('No details available for this CVE.') }}"
-
-    # - name: Display CVE Mitigation
-    #   ansible.builtin.set_fact:
-    #     cve_mitigation: "{{ cve_response.json.mitigation.value | default('No mitigation available for this CVE.') }}"
+    - name: Resolve CVE context
+      ansible.builtin.set_fact:
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.events[0].payload.reported_cve) }}"
+        affected_systems_fqdn: "{{ affected_systems_fqdn | default([]) }}"
 
     - name: Fetch Data from VEX/CSAF API for {{ cve_name }}
-      uri:
+      ansible.builtin.uri:
         url: "https://access.redhat.com/security/data/csaf/v2/vex/{{ cve_name.split('-')[1] }}/{{ cve_name | lower }}.json"
         return_content: true
         status_code: 200
@@ -37,18 +22,14 @@
 
     - name: Extract and Set CVE Details
       ansible.builtin.set_fact:
-        cve_details: "{{ cve_details}}{{ item.category }}: {{ item.text }}\n"
+        cve_details: "{{ cve_details }}{{ item.category }}: {{ item.text }}\n"
       loop: "{{ cve_response.json.vulnerabilities[0].notes | default([]) }}"
-
-    - name: Debug CVE Details
-      debug: 
-        msg: "{{ cve_details }}"
 
     - name: Extract CVE Red Hat Security Bulletin (RHSB) url
       ansible.builtin.set_fact:
         cve_rhsb_url: "{{ item.url }}"
       loop: "{{ cve_response.json.vulnerabilities[0].references | default([]) }}"
-      when: "'RHSB' in item.summary" 
+      when: "'RHSB' in item.summary"
 
     - name: Fetch CVE Red Hat Security Bulletin (RHSB) Content
       ansible.builtin.uri:
@@ -59,7 +40,7 @@
       register: cve_rhsb_html
 
     - name: Extract Executive Summary and Mitigations section from RHSB HTML
-      set_fact:
+      ansible.builtin.set_fact:
         cve_rhsb_execsummary: "{{ cve_rhsb_html.content |
           regex_search('(?s)<h2>Executive Summary</h2>(.*?)<h2>',
           '\\1', ignorecase=True) | default([], true) }}"
@@ -72,16 +53,16 @@
       ansible.builtin.set_fact:
         prompt: |
           Write a simple ansible playbook to mitigate {{ cve_name }}.
-          The playbbok MUST only cover the RHEL OS for target nodes.
+          The playbook MUST only cover the RHEL OS for target nodes.
           DON'T include tasks to perform backups, checks or validations.
           DON'T update any software package or kernel binary, DO ONLY mitigation
           based on kernel parameters or similar mitigation measures.
           You SHOULD reboot the systems to apply changes if needed.
-          You MUST use the following string as ansible play targets (hosts): 
+          You MUST use the following string as ansible play targets (hosts):
           '{{ affected_systems_fqdn | join(',') }}'.
           The CVE has the following details:
           {{ cve_details }}
-          The Red Hat Security Bulletin containt mitigation details:
+          The Red Hat Security Bulletin contains mitigation details:
           Executive Summary: {{ cve_rhsb_execsummary | default ('', true) }}
           Mitigations: {{ cve_rhsb_mitigations | default ('', true) }}
 
@@ -91,22 +72,18 @@
         method: POST
         body:
           model: "{{ ai_model }}"
-          messages: 
+          messages:
             - content: "{{ prompt }}"
         status_code: 200
         body_format: json
         headers:
           Content-Type: "application/json"
           Authorization: "Bearer {{ ai_token }}"
-        validate_certs: yes
+        validate_certs: true
       register: ai_response
       retries: 10
       delay: 5
       until: ai_response.status == 200
-
-    - name: Debug Response from Openshift AI
-      debug:
-        var: ai_response
 
     - name: Set Fact Mitigation Ansible Playbook
       ansible.builtin.set_fact:
@@ -117,16 +94,11 @@
           {{ ai_response.json.choices[0].message.reasoning_content |
           wordwrap(60) |
           comment('plain', prefix='####### REASONING #######', postfix='#######') }}
-          
+
           {{ ai_response.json.choices[0].message.content
              .split('```yaml')[1].split('```')[0] | trim }}
 
-    - name: Debug generated Playbook
-      ansible.builtin.debug:
-        var: generated_playbook
-
-    - name: Set stats generated Playbook
+    - name: Publish generated playbook artifact
       ansible.builtin.set_stats:
         data:
           generated_playbook: "{{ generated_playbook }}"
-

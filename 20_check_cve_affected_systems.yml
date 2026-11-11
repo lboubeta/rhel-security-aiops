@@ -3,33 +3,18 @@
 - name: Check CVE Details
   hosts: localhost
   connection: local
-  gather_facts: no
+  gather_facts: false
   vars_files: vars/main.yml
   tasks:
-    - name: Debug Hostvars
-      ansible.builtin.debug:
-        var: hostvars['localhost']
-
     - name: AIOps Lightspeed action payload
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
+        cve_name: "{{ ansible_eda.event.payload.events[0].payload.reported_cve }}"
 
-    - name: Debug Payload
-      ansible.builtin.debug:
-        var: payload
-
-    - name: Set fact {{ payload.events[0].payload.reported_cve }} Name
-      ansible.builtin.set_fact:
-        cve_name: "{{ payload.events[0].payload.reported_cve }}"
-
-    - name: Set stats {{ cve_name }} Name
+    - name: Publish CVE name artifact
       ansible.builtin.set_stats:
         data:
           cve_name: "{{ cve_name }}"
-
-    - name: Debug {{ cve_name }} Name
-      ansible.builtin.debug:
-        msg: "CVE Name: {{ cve_name }}"
 
     - name: Get access token using Service Account Client ID and Secret
       ansible.builtin.uri:
@@ -51,32 +36,19 @@
           Authorization: "Bearer {{ sso_response.json.access_token }}"
         status_code: 200
       register: affected_systems_response
-      # ignore_errors: true
-
-    - name: Debug Affected Systems Response
-      ansible.builtin.debug:
-        var: affected_systems_response
 
     - name: Set fact Affected Systems ID
       ansible.builtin.set_fact:
         affected_systems_id: "{{ affected_systems_response.json.data | map(attribute='id') | list }}"
 
-    - name: Set stats Affected Systems ID
-      ansible.builtin.set_fact:
-        affected_systems_id: "{{ affected_systems_id }}"
-
-    - name: Set stats Affected Systems ID
-      ansible.builtin.set_stats:
-        data:
-          affected_systems_id: "{{ affected_systems_id }}"
-
     - name: Set fact Affected Systems FQDN
       ansible.builtin.set_fact:
         affected_systems_fqdn: "{{ affected_systems_response.json.data | map(attribute='attributes.display_name') | list }}"
 
-    - name: Set stats Affected Systems FQDN
+    - name: Publish affected systems artifacts
       ansible.builtin.set_stats:
         data:
+          affected_systems_id: "{{ affected_systems_id }}"
           affected_systems_fqdn: "{{ affected_systems_fqdn }}"
 
     - name: Check whether any System is Affected
@@ -85,4 +57,3 @@
           - affected_systems_id | length > 0
         fail_msg: "There ARE NO Systems affected by {{ cve_name }}. Aborting..."
         success_msg: "There ARE Systems affected by {{ cve_name }}: Continue {{ affected_systems_fqdn }}"
-

@@ -1,0 +1,46 @@
+---
+
+- name: Check Satellite Errata for CVE
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files: vars/main.yml
+  tasks:
+    - name: Resolve CVE context
+      ansible.builtin.set_fact:
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.events[0].payload.reported_cve) }}"
+
+    - name: Search Satellite errata for {{ cve_name }}
+      redhat.satellite.resource_info:
+        # server_url: "{{ satellite_server_url }}"
+        # username: "{{ satellite_username }}"
+        # password: "{{ satellite_password }}"
+        validate_certs: "{{ satellite_validate_certs | default(true) }}"
+        organization: "{{ satellite_organization }}"
+        resource: errata
+        search: "cve = {{ cve_name }}"
+        full_details: true
+      register: satellite_errata
+
+    - name: Set fact matching errata
+      ansible.builtin.set_fact:
+        satellite_errata_ids: "{{ satellite_errata.resources | map(attribute='errata_id') | list }}"
+        satellite_errata_found: "{{ satellite_errata.resources | length > 0 }}"
+
+    - name: Publish Satellite errata artifacts
+      ansible.builtin.set_stats:
+        data:
+          cve_name: "{{ cve_name }}"
+          satellite_errata_found: "{{ satellite_errata_found }}"
+          satellite_errata_ids: "{{ satellite_errata_ids }}"
+
+    - name: Assert Satellite has an errata for {{ cve_name }}
+      ansible.builtin.assert:
+        that:
+          - satellite_errata_found | bool
+        fail_msg: >-
+          No Satellite errata found for {{ cve_name }}.
+          Cannot remediate via content promotion.
+        success_msg: >-
+          Satellite errata available for {{ cve_name }}:
+          {{ satellite_errata_ids | join(', ') }}

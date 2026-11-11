@@ -3,3 +3,15 @@
 # EDA
 
 eda_host: "aws-aiops-lightspeed-insights.aap.svc.cluster.local"
+
+# Satellite (redhat.satellite collection)
+# Prefer AAP credentials / survey vars over hardcoding secrets.
+satellite_server_url: "{{ lookup('env', 'SATELLITE_SERVER_URL') | default('https://satellite.example.com', true) }}"
+satellite_username: "{{ lookup('env', 'SATELLITE_USERNAME') | default('admin', true) }}"
+satellite_password: "{{ lookup('env', 'SATELLITE_PASSWORD') | default('', true) }}"
+satellite_validate_certs: true
+satellite_organization: Provisioner
+satellite_content_view: RHEL 9.8
+satellite_lifecycle_env_source: Development
+satellite_lifecycle_env_target: Producción
+satellite_force_promote: false

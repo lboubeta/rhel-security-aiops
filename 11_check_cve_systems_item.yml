@@ -10,97 +10,19 @@
           ansible_eda:
             event:
               payload:
-                events: 
-                  - payload: 
+                events:
+                  - payload:
                       reported_cve: "{{ item.payload.reported_cve }}"
                       publish_date: "{{ item.payload.publish_date }}"
                       known_exploit: "{{ item.payload.known_exploit }}"
-                      demo_has_remediation: true
+                      demo_has_remediation: "{{ item.payload.demo_has_remediation | default(true) }}"
         controller_workflow_launch_jobs:
           - name: "AWS AIOps: MITIGATION & REMEDIATION Workflow"
             organization: Default
             extra_vars: "{{ extra_vars }}"
-      ansible.builtin.include_role: 
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_workflow_launch
   rescue:
     - name: Record failure for {{ item.payload.reported_cve }}
       ansible.builtin.debug:
         msg: "CVE Failed: {{ item.payload.reported_cve }}"
-
-
-# EVENT: any-cve-known-exploit
-# {
-#   "bundle": "rhel",
-#   "application": "vulnerability",
-#   "version": "v1.1.0",
-#   "event_type": "any-cve-known-exploit",
-#   "timestamp": "2026-07-10T10:19:19.958529",
-#   "context": {
-#     "display_name": "randomserver",
-#     "inventory_id": "704fe5b0-210d-47d5-9483-e8dab3348432",
-#     "org_id": "15801425"
-#   },
-#   "events": [
-#     {
-#       "metadata": {},
-#       "payload": {
-#         "reported_cve": "CVE-2026-31431",
-#         "cvss_score": 7.8,
-#         "impact_id": 5,
-#         "known_exploit": true,
-#         "has_rule": false,
-#         "publish_date": "2026-04-22T00:00:00+00:00",
-#         "demo_has_remediation": true
-#       }
-#     }
-#   ],
-#   "recipients": [
-#     {
-#       "only_admins": false,
-#       "ignore_user_preferences": false
-#     }
-#   ],
-#   "org_id": "15801425"
-# }
-
-
-# EVENT: system-cve-known-exploit
-# ansible_facts:
-#   payload:
-#     account_id: null
-#     application: vulnerability
-#     bundle: rhel
-#     context:
-#       display_name: ec2-54-237-246-170.compute-1.amazonaws.com
-#       inventory_id: 06eb0ac2-ac4d-4bd4-8b66-ca8fc9744793
-#       org_id: '15801425'
-#     event_type: system-cve-known-exploit
-#     events:
-#       - metadata: {}
-#         payload:
-#           cvss_score: 7.8
-#           has_rule: false
-#           impact_id: 5
-#           known_exploit: true
-#           publish_date: '2025-07-22T00:00:00+00:00'
-#           reported_cve: CVE-2025-38352
-#       - metadata: {}
-#         payload:
-#           cvss_score: 7.8
-#           has_rule: false
-#           impact_id: 5
-#           known_exploit: true
-#           publish_date: '2026-04-22T00:00:00+00:00'
-#           reported_cve: CVE-2026-31431
-#     org_id: '15801425'
-#     severity: CRITICAL
-#     source:
-#       application:
-#         display_name: Vulnerability
-#       bundle:
-#         display_name: Red Hat Enterprise Linux
-#       event_type:
-#         display_name: System vulnerability with known exploit
-#     timestamp: '2026-07-29T12:57:15.571532'
-# _ansible_no_log: false
-# changed: false    

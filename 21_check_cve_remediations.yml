@@ -9,10 +9,7 @@
     - name: AIOps Lightspeed action payload
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
-
-    - name: Debug Payload
-      ansible.builtin.debug:
-        var: payload
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.events[0].payload.reported_cve) }}"
 
     - name: Get Lightspeed access token using Service Account Client ID and Secret
       ansible.builtin.uri:
@@ -26,18 +23,14 @@
         status_code: 200
       register: sso_response
 
-    - name: Query Lightspeed for {{ payload.events[0].payload.reported_cve }}
+    - name: Query Lightspeed for {{ cve_name }}
       ansible.builtin.uri:
-        url: "https://console.redhat.com/api/vulnerability/v1/cves/{{ payload.events[0].payload.reported_cve }}"
+        url: "https://console.redhat.com/api/vulnerability/v1/cves/{{ cve_name }}"
         method: GET
         headers:
           Authorization: "Bearer {{ sso_response.json.access_token }}"
         status_code: 200
       register: cve_response
-
-    - name: Debug Lightspeed Response
-      ansible.builtin.debug:
-        var: cve_response
 
     - name: Check whether there are Remediations available on Lightspeed for {{ cve_name }}
       ansible.builtin.assert:

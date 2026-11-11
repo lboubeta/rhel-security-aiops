@@ -6,17 +6,9 @@
   gather_facts: false
   vars_files: vars/main.yml
   tasks:
-    - name: Debug Hostvars
-      ansible.builtin.debug:
-        var: hostvars['localhost']
-
     - name: AIOps Lightspeed action payload
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
-
-    - name: Debug Events
-      ansible.builtin.debug:
-        var: payload
 
     # using an item tasks playbook prevents loop to abort when any item fails
     - name: Loop over CVEs and Launch Job Workflow Template

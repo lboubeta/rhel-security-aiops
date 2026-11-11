@@ -3,24 +3,14 @@
 - name: Get CVE Remediation
   hosts: localhost
   connection: local
-  gather_facts: yes
+  gather_facts: true
   vars_files: vars/main.yml
   tasks:
-    - name: Debug Hostvars
-      ansible.builtin.debug:
-        var: hostvars['localhost']
-
-    - name: AIOps Lightspeed action payload
+    - name: Resolve CVE context
       ansible.builtin.set_fact:
         payload: "{{ ansible_eda.event.payload }}"
-
-    - name: Debug Payload
-      ansible.builtin.debug:
-        var: payload
-
-    - name: Debug {{ payload.events[0].payload.reported_cve }} Name
-      ansible.builtin.debug:
-        msg: "CVE Name: {{ cve_name }}"
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.events[0].payload.reported_cve) }}"
+        affected_systems_id: "{{ affected_systems_id | default([]) }}"
 
     - name: Get access token using Service Account Client ID and Secret
       ansible.builtin.uri:
@@ -59,7 +49,7 @@
           Authorization: "Bearer {{ sso_response.json.access_token }}"
         status_code: 200
         return_content: true
-        dest: "./insights_remediation_{{ cve_name }}.yml"     
+        dest: "./insights_remediation_{{ cve_name }}.yml"
       register: downloaded_playbook_response
 
     - name: Set fact generated Playbook content
@@ -80,11 +70,7 @@
         downloaded_playbook: "{{ downloaded_playbook | regex_replace((item.fqdn), (item.display_name), multiline=True) }}"
       loop: "{{ inventory_response.json.results }}"
 
-    - name: Debug dowloaded Playbook
-      ansible.builtin.debug:
-        var: downloaded_playbook
-
-    - name: Set stats generated Playbook
+    - name: Publish downloaded playbook artifact
       ansible.builtin.set_stats:
         data:
           downloaded_playbook: "{{ downloaded_playbook }}"
