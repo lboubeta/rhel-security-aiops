@@ -174,12 +174,12 @@
           {
             "port": "case_0",
             "label": "Mitigation",
-            "condition": "${trigger.event.payload.demo_has_remediation} == false"
+            "condition": "${activity_47720b9b_a326_4c3e_903d_e56e6b3e21fd.artifacts.has_remediation} == false"
           },
           {
             "port": "case_1",
             "label": "Remediation",
-            "condition": "${trigger.event.payload.demo_has_remediation} == true"
+            "condition": "${activity_47720b9b_a326_4c3e_903d_e56e6b3e21fd.artifacts.has_remediation} == true"
           }
         ],
         "default_port": "default"

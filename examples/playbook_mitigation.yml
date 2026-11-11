@@ -1,0 +1,115 @@
+####### REASONING #######
+# We need to output an Ansible playbook that mitigates
+# CVE-2026-31431 by applying kernel parameters via sysctl or
+# kernel command line. The user explicitly wants not to update
+# any packages or kernel binary. Use sysctl or modify
+# /etc/default/grub and rebuild grub config, perhaps set
+# initcall_blacklist=algif_aead_init or af_alg_init. Provide
+# steps: set runtime kernel parameter via /proc/cmdline using
+# GRUB_CMDLINE_LINUX. Use `grubby` to edit kernel command
+# line. Then optionally reboot.
+#
+# We must use given hosts list exactly as string. Provide
+# playbook with hosts: "ec2-54-90-135-180.compute-
+# 1.amazonaws.com,ec2-34-228-227-78.compute-1.amazonaws.com".
+# Use become: true. Use tasks: like lineinfile to ensure
+# kernel command line includes the blacklist param (maybe
+# multiple options). Use `grubby --update-kernel=ALL
+# --args="initcall_blacklist=algif_aead_init"`.
+#
+# Also maybe set sysctl to disable af_alg? But not standard
+# sysctl. Use `sysctl` maybe for "crypto.authenc_esn=0"? Not
+# sure. Provide example.
+#
+# Also include a handler to reboot.
+#
+# We need to ensure ansible syntax. Provide playbook with
+# appropriate variable for blacklist options list.
+#
+# The answer should just be the playbook content, no extra
+# commentary. Provide caution notes as comments.
+#
+# Let's craft.
+#######
+---
+# Playbook: mitigate CVE‑2026‑31431 on RHEL nodes
+# ------------------------------------------------
+# This playbook does **not** install any packages or replace the kernel.
+# It adds kernel‑command‑line arguments that blacklist the vulnerable
+# initialization functions (see Red Hat advisory RHSB‑2026‑002):
+#   • initcall_blacklist=algif_aead_init
+#   • initcall_blacklist=af_alg_init   (optional, blocks the whole af_alg interface)
+#   • initcall_blacklist=crypto_authenc_esn_module_init (optional, blocks the specific algorithm)
+# After updating the boot loader configuration the nodes are rebooted so the
+# new arguments take effect.
+
+- name: Apply CVE‑2026‑31431 mitigation to RHEL hosts
+  hosts: rhel
+  become: true
+  gather_facts: yes
+  tasks:
+
+    - name: Verify the target OS is Red Hat Enterprise Linux
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['os_family'] == "RedHat"
+        fail_msg: "This playbook only supports RHEL. Skipping host {{ inventory_hostname }}."
+      tags: verify_os
+
+    - name: Gather current GRUB command‑line arguments
+      ansible.builtin.command: grubby --info=ALL
+      register: grubby_info
+      changed_when: false
+      tags: gather_grub
+
+    - name: Ensure initcall_blacklist for algif_aead_init is present
+      ansible.builtin.command: >
+        grubby --update-kernel=ALL
+        --args="initcall_blacklist=algif_aead_init"
+      when: "'initcall_blacklist=algif_aead_init' not in grubby_info.stdout"
+      notify: Reboot host
+      tags: blacklist_algif_aead
+
+    - name: (Optional) Ensure initcall_blacklist for af_alg_init is present
+      ansible.builtin.command: >
+        grubby --update-kernel=ALL
+        --args="initcall_blacklist=af_alg_init"
+      when:
+        - "'initcall_blacklist=af_alg_init' not in grubby_info.stdout"
+        # set to true to enable this extra hardening
+        - false
+      notify: Reboot host
+      tags: blacklist_af_alg
+
+    - name: (Optional) Ensure initcall_blacklist for crypto_authenc_esn_module_init is present
+      ansible.builtin.command: >
+        grubby --update-kernel=ALL
+        --args="initcall_blacklist=crypto_authenc_esn_module_init"
+      when:
+        - "'initcall_blacklist=crypto_authenc_esn_module_init' not in grubby_info.stdout"
+        # set to true to enable this extra hardening
+        - false
+      notify: Reboot host
+      tags: blacklist_authenc
+
+    - name: Verify that the new kernel arguments are now present
+      ansible.builtin.command: grubby --info=ALL
+      register: grubby_check
+      changed_when: false
+      tags: verify_blacklist
+
+    - name: Show final kernel command‑line for audit purposes
+      ansible.builtin.debug:
+        msg: |
+          {{ inventory_hostname }} kernel arguments after mitigation:
+          {{ grubby_check.stdout_lines | map('regex_search', 'args=.*') | list }}
+      tags: audit
+
+  handlers:
+
+    - name: Reboot host
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+        test_command: whoami      # simple test to confirm the host is back online
+      listen: Reboot host
+      tags: reboot

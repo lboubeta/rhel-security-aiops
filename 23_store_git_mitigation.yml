@@ -6,6 +6,28 @@
   gather_facts: false
   vars_files: vars/main.yml
   tasks:
+    - name: Normalize AI-generated playbook payload
+      ansible.builtin.set_fact:
+        playbook_payload: >-
+          {{
+            playbook_content
+            if (playbook_content is mapping)
+            else (playbook_content | from_json)
+          }}
+
+    - name: Extract playbook name and YAML content
+      ansible.builtin.set_fact:
+        playbook_filename: "{{ playbook_payload.name | default('playbook_mitigation.yml') }}"
+        playbook_yaml: "{{ playbook_payload.content }}"
+        cve_name: "{{ cve_name | default(ansible_eda.event.payload.reported_cve | default('unknown-cve'), true) }}"
+
+    - name: Assert playbook YAML content is present
+      ansible.builtin.assert:
+        that:
+          - playbook_yaml is string
+          - playbook_yaml | length > 0
+        fail_msg: "playbook_content.content is empty; expected AI-generated YAML playbook"
+
     - name: Retrieve a repository (Mitigation)
       ansible.scm.git_retrieve:
         origin:
@@ -27,7 +49,7 @@
     - name: Publish the changes
       ansible.scm.git_publish:
         commit:
-          message: "Adding new playbook_mitigation.yml for {{ cve_name }}"
+          message: "Adding {{ playbook_filename }} for {{ cve_name }}"
         path: "{{ repository['path'] }}"
         user:
           name: "{{ github_user }}"
