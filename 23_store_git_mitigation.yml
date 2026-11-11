@@ -6,19 +6,10 @@
   gather_facts: false
   vars_files: vars/main.yml
   tasks:
-    - name: Normalize AI-generated playbook payload
+    - name: Resolve playbook filename and CVE context
       ansible.builtin.set_fact:
-        playbook_payload: >-
-          {{
-            playbook_content
-            if (playbook_content is mapping)
-            else (playbook_content | from_json)
-          }}
-
-    - name: Extract playbook name and YAML content
-      ansible.builtin.set_fact:
-        playbook_filename: "{{ playbook_payload.name | default('playbook_mitigation.yml') }}"
-        playbook_yaml: "{{ playbook_payload.content }}"
+        playbook_filename: "{{ playbook_name | default('playbook_mitigation.yml') }}"
+        playbook_yaml: "{{ playbook_content }}"
         cve_name: "{{ cve_name | default(ansible_eda.event.payload.reported_cve | default('unknown-cve'), true) }}"
 
     - name: Assert playbook YAML content is present
@@ -26,7 +17,12 @@
         that:
           - playbook_yaml is string
           - playbook_yaml | length > 0
-        fail_msg: "playbook_content.content is empty; expected AI-generated YAML playbook"
+          - playbook_filename is string
+          - playbook_filename | length > 0
+        fail_msg: >-
+          Expected playbook_content (YAML string) and playbook_name (filename).
+          Got playbook_content type={{ playbook_content | type_debug }},
+          playbook_name={{ playbook_name | default('undefined') }}
 
     - name: Retrieve a repository (Mitigation)
       ansible.scm.git_retrieve:
@@ -41,8 +37,8 @@
 
     - name: Copy playbook content to the GIT folder (Mitigation)
       ansible.builtin.copy:
-        content: "{{ generated_playbook }}"
-        dest: "{{ repository['path'] }}/playbook_mitigation.yml"
+        content: "{{ playbook_yaml }}"
+        dest: "{{ repository['path'] }}/{{ playbook_filename }}"
         force: true
         mode: '0644'
 
