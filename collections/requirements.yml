@@ -2,3 +2,6 @@
 collections:
   - name: redhat.satellite
     version: ">=5.0.0"
+  - name: infra.aap_configuration
+  - name: ansible.controller
+    version: ">=4.6.0"

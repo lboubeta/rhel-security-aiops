@@ -1,0 +1,124 @@
+---
+# Create / update AAP Job Templates via infra.aap_configuration.
+#
+# Launch this playbook as a Job Template using the survey in
+# vars/create_job_templates_survey.yml so operators provide organization,
+# inventory, credentials, project/playbook and can mark prompt-on-launch
+# for limit and extra_vars (plus inventory/credentials).
+#
+# Auth (one of):
+#   - aap_hostname + aap_username + aap_password
+#   - aap_hostname + aap_token
+#   - CONTROLLER_* env vars / Controller credential on the JT
+- name: Create AAP Job Templates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/main.yml
+  vars:
+    # Survey / extra_vars inputs
+    jt_name: "{{ jt_name | default('New Job Template', true) }}"
+    jt_description: "{{ jt_description | default('', true) }}"
+    jt_organization: "{{ jt_organization | default('Webinar', true) }}"
+    jt_inventory: "{{ jt_inventory | default('', true) }}"
+    jt_project: "{{ jt_project | default('', true) }}"
+    jt_playbook: "{{ jt_playbook | default('', true) }}"
+    jt_credentials: "{{ jt_credentials | default('', true) }}"
+    jt_execution_environment: "{{ jt_execution_environment | default('', true) }}"
+
+    # Prompt on launch — survey answers may be "yes"/"no" strings
+    jt_ask_limit_on_launch: "{{ jt_ask_limit_on_launch | default('yes', true) }}"
+    jt_ask_variables_on_launch: "{{ jt_ask_variables_on_launch | default('yes', true) }}"
+    jt_ask_inventory_on_launch: "{{ jt_ask_inventory_on_launch | default('yes', true) }}"
+    jt_ask_credential_on_launch: "{{ jt_ask_credential_on_launch | default('yes', true) }}"
+
+    # Optional survey attached to the *created* JT
+    jt_enable_survey: "{{ jt_enable_survey | default('no', true) }}"
+
+  pre_tasks:
+    - name: Require Controller API connection and JT essentials
+      ansible.builtin.assert:
+        that:
+          - jt_name | length > 0
+          - jt_organization | length > 0
+          - jt_inventory | length > 0
+          - jt_project | length > 0
+          - jt_playbook | length > 0
+        fail_msg: >-
+          Provide survey fields:
+          jt_name, jt_organization, jt_inventory, jt_project, jt_playbook.
+
+    - name: Normalize credentials to a list
+      ansible.builtin.set_fact:
+        jt_credentials_list: >-
+          {{
+            jt_credentials
+            if (jt_credentials is sequence and jt_credentials is not string)
+            else (
+              (jt_credentials | string).split(',')
+              | map('trim')
+              | reject('equalto', '')
+              | list
+            )
+          }}
+
+    - name: Normalize prompt-on-launch and survey flags
+      ansible.builtin.set_fact:
+        ask_limit: "{{ jt_ask_limit_on_launch | string | lower in ['true', 'yes', '1'] }}"
+        ask_variables: "{{ jt_ask_variables_on_launch | string | lower in ['true', 'yes', '1'] }}"
+        ask_inventory: "{{ jt_ask_inventory_on_launch | string | lower in ['true', 'yes', '1'] }}"
+        ask_credential: "{{ jt_ask_credential_on_launch | string | lower in ['true', 'yes', '1'] }}"
+        enable_survey: "{{ jt_enable_survey | string | lower in ['true', 'yes', '1'] }}"
+
+    - name: Load optional survey_spec for the created JT
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/vars/create_job_templates_created_jt_survey.yml"
+        name: created_jt_survey_spec
+      when: enable_survey | bool
+
+    - name: Build base controller_templates payload
+      ansible.builtin.set_fact:
+        controller_templates:
+          - name: "{{ jt_name }}"
+            description: "{{ jt_description }}"
+            job_type: run
+            organization: "{{ jt_organization }}"
+            inventory: "{{ jt_inventory }}"
+            project: "{{ jt_project }}"
+            playbook: "{{ jt_playbook }}"
+            credentials: "{{ jt_credentials_list }}"
+            ask_inventory_on_launch: "{{ ask_inventory | bool }}"
+            ask_credential_on_launch: "{{ ask_credential | bool }}"
+            ask_limit_on_launch: "{{ ask_limit | bool }}"
+            ask_variables_on_launch: "{{ ask_variables | bool }}"
+            survey_enabled: "{{ enable_survey | bool }}"
+            state: present
+
+    - name: Add execution environment when provided
+      ansible.builtin.set_fact:
+        controller_templates: >-
+          {{
+            [controller_templates[0] | combine({
+              'execution_environment': jt_execution_environment
+            })]
+          }}
+      when: jt_execution_environment | length > 0
+
+    - name: Attach survey_spec when enabled
+      ansible.builtin.set_fact:
+        controller_templates: >-
+          {{
+            [controller_templates[0] | combine({
+              'survey_spec': created_jt_survey_spec
+            })]
+          }}
+      when: enable_survey | bool
+
+    - name: Show Job Template definition to create
+      ansible.builtin.debug:
+        var: controller_templates
+
+  roles:
+    - role: infra.aap_configuration.controller_job_templates
+      when: controller_templates is defined

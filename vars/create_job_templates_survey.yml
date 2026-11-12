@@ -1,0 +1,127 @@
+---
+# Survey to attach to the "Create Job Templates" Job Template itself.
+# Paste as survey_spec (or reference from CaC) so launch prompts for org,
+# inventory, credentials, project/playbook, and prompt-on-launch toggles.
+survey_enabled: true
+survey_spec:
+  name: Create Job Template
+  description: >-
+    Parameters used by 50_create_job_templates.yml to create a JT
+    with infra.aap_configuration
+  spec:
+    - question_name: Job Template name
+      question_description: Name of the Job Template to create or update
+      required: true
+      type: text
+      min: 1
+      max: 200
+      variable: jt_name
+      default: New Job Template
+      new_question: true
+
+    - question_name: Organization
+      question_description: AAP organization that owns the project / JT
+      required: true
+      type: text
+      min: 1
+      max: 200
+      variable: jt_organization
+      default: Webinar
+      new_question: true
+
+    - question_name: Inventory
+      question_description: Inventory name assigned to the JT (can still prompt on launch)
+      required: true
+      type: text
+      min: 1
+      max: 200
+      variable: jt_inventory
+      default: ""
+      new_question: true
+
+    - question_name: Credentials
+      question_description: Comma-separated credential names for the JT
+      required: false
+      type: text
+      min: 0
+      max: 500
+      variable: jt_credentials
+      default: ""
+      new_question: true
+
+    - question_name: Project
+      question_description: Project that contains the playbook
+      required: true
+      type: text
+      min: 1
+      max: 200
+      variable: jt_project
+      default: ""
+      new_question: true
+
+    - question_name: Playbook path
+      question_description: Playbook path relative to the project root
+      required: true
+      type: text
+      min: 1
+      max: 300
+      variable: jt_playbook
+      default: ""
+      new_question: true
+
+    - question_name: Execution Environment
+      question_description: Optional EE name (leave empty for project/org default)
+      required: false
+      type: text
+      min: 0
+      max: 200
+      variable: jt_execution_environment
+      default: ""
+      new_question: true
+
+    - question_name: Prompt on launch — Inventory
+      question_description: Enable ask_inventory_on_launch on the created JT
+      required: true
+      type: multiplechoice
+      choices: "yes\nno"
+      variable: jt_ask_inventory_on_launch
+      default: "yes"
+      new_question: true
+
+    - question_name: Prompt on launch — Credentials
+      question_description: Enable ask_credential_on_launch on the created JT
+      required: true
+      type: multiplechoice
+      choices: "yes\nno"
+      variable: jt_ask_credential_on_launch
+      default: "yes"
+      new_question: true
+
+    - question_name: Prompt on launch — Limit
+      question_description: Enable ask_limit_on_launch on the created JT
+      required: true
+      type: multiplechoice
+      choices: "yes\nno"
+      variable: jt_ask_limit_on_launch
+      default: "yes"
+      new_question: true
+
+    - question_name: Prompt on launch — Extra variables
+      question_description: Enable ask_variables_on_launch on the created JT
+      required: true
+      type: multiplechoice
+      choices: "yes\nno"
+      variable: jt_ask_variables_on_launch
+      default: "yes"
+      new_question: true
+
+    - question_name: Attach survey to created JT
+      question_description: >-
+        If yes, attach vars/create_job_templates_created_jt_survey.yml
+        as survey_spec on the new JT
+      required: true
+      type: multiplechoice
+      choices: "yes\nno"
+      variable: jt_enable_survey
+      default: "no"
+      new_question: true
