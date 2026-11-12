@@ -45,14 +45,14 @@
     - name: Copy playbook content to the GIT folder (Remediation)
       ansible.builtin.copy:
         content: "{{ downloaded_playbook }}"
-        dest: "{{ repository['path'] }}/playbook_remediation.yml"
+        dest: "{{ repository['path'] }}/playbook_remediation_{{ cve_name }}.yml"
         force: true
         mode: '0644'
 
     - name: Publish the changes (Remediation)
       ansible.scm.git_publish:
         commit:
-          message: "Adding new playbook_remediation.yml for {{ cve_name }}"
+          message: "Adding new playbook remediation.yml for {{ cve_name }}"
         path: "{{ repository['path'] }}"
         user:
           name: "{{ github_user }}"
