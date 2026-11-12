@@ -17,6 +17,12 @@
   vars_files:
     - vars/main.yml
   vars:
+    aap_hostname: "{{ aap_host | default(lookup('env', 'CONTROLLER_HOST'), true) }}"
+    aap_username: "{{ lookup('env', 'CONTROLLER_USERNAME') | default(aap_username | default(''), true) }}"
+    aap_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') | default(aap_password | default(''), true) }}"
+    aap_token: "{{ aap_oauthtoken | default(lookup('env', 'CONTROLLER_OAUTH_TOKEN'), true) }}"
+    aap_validate_certs: "{{ aap_validate_certs | default(false) }}"
+
     # Survey / extra_vars inputs
     jt_name: "{{ jt_name | default('New Job Template', true) }}"
     jt_description: "{{ jt_description | default('', true) }}"
@@ -40,13 +46,16 @@
     - name: Require Controller API connection and JT essentials
       ansible.builtin.assert:
         that:
+          - aap_hostname | length > 0
           - jt_name | length > 0
           - jt_organization | length > 0
           - jt_inventory | length > 0
           - jt_project | length > 0
           - jt_playbook | length > 0
+          - (aap_token | default('') | length > 0) or
+            ((aap_username | default('') | length > 0) and (aap_password | default('') | length > 0))
         fail_msg: >-
-          Provide survey fields:
+          Provide aap_hostname (or CONTROLLER_HOST), auth, and survey fields:
           jt_name, jt_organization, jt_inventory, jt_project, jt_playbook.
 
     - name: Normalize credentials to a list

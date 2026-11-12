@@ -6,11 +6,58 @@
   gather_facts: true
   vars_files: vars/main.yml
   tasks:
-    - name: Resolve CVE context
+    - name: Resolve CVE event payload (AO flat or Insights events[])
       ansible.builtin.set_fact:
-        payload: "{{ ansible_eda.event.payload }}"
-        cve_name: "{{ cve_name | default(ansible_eda.event.payload.reported_cve) }}"
-        affected_systems_id: "{{ affected_systems_id | default([]) }}"
+        payload: >-
+          {{
+            ansible_eda.event.payload.events[0].payload
+            if (ansible_eda.event.payload.events is defined
+                and ansible_eda.event.payload.events | length > 0)
+            else ansible_eda.event.payload
+          }}
+
+    - name: Resolve CVE name and inventory context
+      ansible.builtin.set_fact:
+        cve_name: "{{ cve_name | default(payload.reported_cve, true) }}"
+        # AO flat: ansible_eda.context.inventory_id
+        # Insights nested: ansible_eda.event.payload.context.inventory_id
+        event_inventory_id: >-
+          {{
+            ansible_eda.context.inventory_id
+            | default(ansible_eda.event.payload.context.inventory_id | default('', true), true)
+          }}
+
+    - name: Normalize affected_systems_id from AO/AAP artifacts (list or CSV string)
+      ansible.builtin.set_fact:
+        affected_systems_id: >-
+          {{
+            affected_systems_id
+            if (affected_systems_id is sequence and affected_systems_id is not string)
+            else (
+              (affected_systems_id | string).split(',')
+              | map('trim')
+              | reject('equalto', '')
+              | list
+            )
+          }}
+      when: affected_systems_id is defined and (affected_systems_id | length > 0)
+
+    - name: Keep only UUID system ids from artifacts
+      ansible.builtin.set_fact:
+        affected_systems_id: >-
+          {{
+            affected_systems_id
+            | select('match', '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            | list
+          }}
+      when: affected_systems_id is defined
+
+    - name: Fall back to inventory_id from event context
+      ansible.builtin.set_fact:
+        affected_systems_id: "{{ [event_inventory_id] }}"
+      when:
+        - affected_systems_id is not defined or affected_systems_id | length == 0
+        - event_inventory_id | length > 0
 
     - name: Get access token using Service Account Client ID and Secret
       ansible.builtin.uri:
@@ -23,6 +70,34 @@
           client_secret: "{{ lightspeed_client_secret }}"
         status_code: 200
       register: sso_response
+
+    - name: Query Lightspeed for affected systems when no UUIDs yet
+      ansible.builtin.uri:
+        url: "https://console.redhat.com/api/vulnerability/v1/cves/{{ cve_name }}/affected_systems"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ sso_response.json.access_token }}"
+        status_code: 200
+      register: affected_systems_response
+      when: affected_systems_id is not defined or affected_systems_id | length == 0
+
+    - name: Set affected_systems_id from Lightspeed for {{ cve_name }}
+      ansible.builtin.set_fact:
+        affected_systems_id: "{{ affected_systems_response.json.data | map(attribute='id') | list }}"
+      when:
+        - affected_systems_response is defined
+        - affected_systems_response is not skipped
+        - affected_systems_response.json.data is defined
+
+    - name: Require at least one system UUID for remediation
+      ansible.builtin.assert:
+        that:
+          - affected_systems_id is defined
+          - affected_systems_id | length > 0
+        fail_msg: >-
+          No system UUIDs available for {{ cve_name }}.
+          Expected artifact affected_systems_id, event context inventory_id,
+          or Lightspeed affected systems.
 
     - name: Request Red Hat Lightspeed to generate a Remediation Plan
       ansible.builtin.uri:
@@ -73,4 +148,5 @@
     - name: Publish downloaded playbook artifact
       ansible.builtin.set_stats:
         data:
+          cve_name: "{{ cve_name }}"
           downloaded_playbook: "{{ downloaded_playbook }}"
