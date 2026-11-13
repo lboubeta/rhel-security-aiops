@@ -1,40 +1,73 @@
 ---
+# Register new RHEL hosts (group rhelnew) against Satellite via global registration,
+# then Insights, then drop the demo exploit script.
+#
+# Required extra_var / credential:
+#   satellite_register_token  — Bearer token from Satellite "Register Host"
+# Optional overrides: satellite_server_url, satellite_activation_key,
+#   satellite_hostgroup_id, satellite_organization_id, satellite_location_id,
+#   satellite_operatingsystem_id
 
-# - name: Get nodes from Inventory and add to Groups
-#   hosts: localhost
-#   connection: local
-#   gather_facts: no
-#   tasks:
-#   - include_role: 
-#       name: utils_hosts_aws
-
-
-- name: Setup NEW RHELs with Lightspeed
+- name: Setup NEW RHELs with Satellite + Lightspeed
   hosts: rhelnew
   become: true
+  gather_facts: true
+  vars_files:
+    - vars/main.yml
   tasks:
-    - debug:
-        # var: hostvars[inventory_hostname].tags.Name
+    - name: Show target host
+      ansible.builtin.debug:
         var: inventory_hostname
 
-    - name: Register using Org ID and Activation Key
-      community.general.redhat_subscription:
-        state: present
-        org_id: "{{ org_id }}"
-        activationkey: "{{ activation_key }}"
-        force_register: true
-      become: true
+    - name: Require Satellite registration token
+      ansible.builtin.assert:
+        that:
+          - satellite_register_token is defined
+          - satellite_register_token | length > 0
+        fail_msg: >-
+          Pass satellite_register_token (Satellite Register Host JWT) as extra_var
+          or SATELLITE_REGISTER_TOKEN in the environment.
 
-    - name: Register with Insights
+    - name: Build Satellite global registration URL
+      ansible.builtin.set_fact:
+        satellite_register_url: >-
+          {{ satellite_server_url }}/register?activation_keys={{ satellite_activation_key | urlencode }}&download_utility=curl&hostgroup_id={{ satellite_hostgroup_id }}&location_id={{ satellite_location_id }}&operatingsystem_id={{ satellite_operatingsystem_id }}&organization_id={{ satellite_organization_id }}&update_packages={{ satellite_register_update_packages | default(false) | string | lower }}
+
+    - name: Register host with Satellite (global registration)
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl --silent --show-error {% if not (satellite_validate_certs | bool) %}--insecure {% endif %}\
+          '{{ satellite_register_url }}' \
+          --header 'Authorization: Bearer {{ satellite_register_token }}' \
+          | bash
+      args:
+        executable: /bin/bash
+      no_log: true
+      register: satellite_register_result
+      changed_when: satellite_register_result.rc == 0
+
+    - name: Register with Insights / Lightspeed
       redhatinsights.insights.insights_register:
         state: present
         display_name: "{{ inventory_hostname }}"
         force_reregister: true
-      become: true
 
-    - name: Copy CVE exploit to RHEL3 /home/ec2-user/
+    - name: Probe candidate home directories on the host
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /home/rhel
+        - /home/ec2-user
+        - "{{ ansible_env.HOME | default('/root') }}"
+      register: home_stats
+
+    - name: Pick first existing home directory
+      ansible.builtin.set_fact:
+        _rhel_home: "{{ (home_stats.results | selectattr('stat.exists') | map(attribute='item') | list | first) | default('/root') }}"
+
+    - name: Copy CVE exploit script
       ansible.builtin.copy:
         src: "scripts/copy_fail_exploit_CVE‑2026‑31431.py"
-        dest: "/home/ec2-user/copy_fail_exploit_CVE‑2026‑31431.py"
+        dest: "{{ _rhel_home }}/copy_fail_exploit_CVE‑2026‑31431.py"
         force: true
-        mode: '0755'
+        mode: "0755"
