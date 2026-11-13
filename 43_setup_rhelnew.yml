@@ -9,7 +9,7 @@
 #   satellite_operatingsystem_id
 
 - name: Setup NEW RHELs with Satellite + Lightspeed
-  hosts: rhelnew
+  hosts: all
   become: true
   gather_facts: true
   vars_files:
