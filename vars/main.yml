@@ -4,13 +4,22 @@
 
 eda_host: "aws-aiops-lightspeed-insights.aap.svc.cluster.local"
 
-# Satellite (redhat.satellite collection)
+# Satellite (redhat.satellite collection + host global registration)
 # Prefer AAP credentials / survey vars over hardcoding secrets.
-satellite_server_url: "{{ lookup('env', 'SATELLITE_SERVER_URL') | default('https://satellite.example.com', true) }}"
+satellite_server_url: "{{ lookup('env', 'SATELLITE_SERVER_URL') | default('https://satellite-satellite-bustos.jfont.tamlab.rdu2.redhat.com', true) }}"
 satellite_username: "{{ lookup('env', 'SATELLITE_USERNAME') | default('admin', true) }}"
 satellite_password: "{{ lookup('env', 'SATELLITE_PASSWORD') | default('', true) }}"
-satellite_validate_certs: true
+satellite_validate_certs: false
 satellite_organization: Provisioner
+satellite_organization_id: 1
+satellite_location_id: 2
+satellite_hostgroup_id: 1
+satellite_operatingsystem_id: 1
+satellite_activation_key: "RHEL 9.8"
+satellite_register_update_packages: false
+# JWT / registration token from Satellite UI (Hosts → Register Host). Do not commit secrets.
+# Prefer AAP extra_var satellite_register_token; env fallback for local runs.
+satellite_register_token: "{{ lookup('env', 'SATELLITE_REGISTER_TOKEN') | default('', true) }}"
 satellite_content_view: RHEL 9.8
 satellite_lifecycle_env_source: Development
 satellite_lifecycle_env_target: Producción
