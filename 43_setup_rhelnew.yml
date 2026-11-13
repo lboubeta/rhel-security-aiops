@@ -46,12 +46,6 @@
       register: satellite_register_result
       changed_when: satellite_register_result.rc == 0
 
-    - name: Register with Insights / Lightspeed
-      redhatinsights.insights.insights_register:
-        state: present
-        display_name: "{{ inventory_hostname }}"
-        force_reregister: true
-
     - name: Probe candidate home directories on the host
       ansible.builtin.stat:
         path: "{{ item }}"
