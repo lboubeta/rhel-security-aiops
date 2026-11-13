@@ -1,0 +1,80 @@
+---
+# Sync (update) an AAP project via infra.aap_configuration.controller_project_update.
+# Use from AO as a JT node before launching another JT that depends on fresh SCM.
+#
+# Required extra_vars (aliases accepted):
+#   project_name | jt_project | controller_project_name
+# Optional:
+#   project_organization | jt_organization | organization  (default: Webinar)
+#   project_wait      (default: true)   — wait for sync to finish
+#   project_timeout   (default: 600)    — abort wait after N seconds
+#   project_interval  (default: 5)      — poll interval while waiting
+#
+# Auth via Controller credential on the JT (CONTROLLER_*) or:
+#   aap_hostname + aap_username/aap_password or aap_token
+#
+# Example AO node:
+#   job_template_name: "52. Sync Project"
+#   extra_vars:
+#     project_name: "RHEL Security Fixes"
+#     project_organization: "Webinar"
+- name: Sync AAP Project
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/main.yml
+
+  pre_tasks:
+    - name: Resolve project identity from extra_vars
+      ansible.builtin.set_fact:
+        _sync_project_name: >-
+          {{
+            project_name
+            | default(jt_project | default(controller_project_name | default('')), true)
+          }}
+        _sync_project_org: >-
+          {{
+            project_organization
+            | default(jt_organization | default(organization | default('Webinar', true), true), true)
+          }}
+        _sync_wait: >-
+          {{
+            (project_wait | default(true, true) | string | lower)
+            not in ['false', 'no', '0']
+          }}
+        _sync_timeout: "{{ project_timeout | default(600, true) | int }}"
+        _sync_interval: "{{ project_interval | default(5, true) | int }}"
+
+    - name: Require project name
+      ansible.builtin.assert:
+        that:
+          - _sync_project_name | length > 0
+        fail_msg: >-
+          Pass project_name (or jt_project / controller_project_name) as extra_var.
+
+    - name: Build controller_projects payload for SCM update
+      ansible.builtin.set_fact:
+        controller_projects:
+          - name: "{{ _sync_project_name }}"
+            organization: "{{ _sync_project_org }}"
+            # Required by the role so the update is actually executed
+            update_project: true
+            wait: "{{ _sync_wait | bool }}"
+            interval: "{{ _sync_interval | int }}"
+            timeout: "{{ _sync_timeout | int }}"
+
+    - name: Show project sync request
+      ansible.builtin.debug:
+        var: controller_projects
+
+  roles:
+    - role: infra.aap_configuration.controller_project_update
+      when: controller_projects is defined
+
+  post_tasks:
+    - name: Publish sync artifacts
+      ansible.builtin.set_stats:
+        data:
+          synced_project_name: "{{ _sync_project_name }}"
+          synced_project_organization: "{{ _sync_project_org }}"
