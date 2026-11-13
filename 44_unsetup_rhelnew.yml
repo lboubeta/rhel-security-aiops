@@ -10,7 +10,7 @@
 
 
 - name: Unsetup NEW RHELs with Lightspeed
-  hosts: rhelnew
+  hosts: all
   become: true
   tasks:
     - debug:
